@@ -6,7 +6,7 @@ import TSim.TSimInterface;
 
 public class Main {
 
-    private static final String TSIM_PATH_ON_LAB_COMPUTERS = "/usr/local/bin/tsim";
+    private static final String TSIM_PATH_ON_LAB_COMPUTERS = "/chalmers/groups/tda384/tsim-0.84/out/bin/tsim";
     /**
      * The main method expects 3-4 arguments, e.g.:
      * - command line: java -cp bin Main "Lab1.map" 5 10 20
@@ -26,16 +26,13 @@ public class Main {
         String tsim;
         if (Files.exists(Paths.get(TSIM_PATH_ON_LAB_COMPUTERS))) {
             tsim = TSIM_PATH_ON_LAB_COMPUTERS;
-            System.out.println("here");
-
         } else {
             // Otherwise tsim must be in your $PATH
             tsim = "tsim";
         }
 
         String tsimCommand = String.format("%s --speed=%d %s", tsim, tsim_speed, map);
-        ProcessBuilder processBuilder = new ProcessBuilder(tsimCommand.split(" "));
-        Process p = processBuilder.start();
+        Process p = Runtime.getRuntime().exec(tsimCommand);
         TSimInterface.init(p.getInputStream(), p.getOutputStream());
         TSimInterface.getInstance().setDebug(true);
         new Lab1(train1_speed, train2_speed);
