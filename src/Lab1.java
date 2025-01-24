@@ -10,13 +10,14 @@ public class Lab1 {
 
     trainHandler train1 = new trainHandler(tsi, 1, speed1);
     trainHandler train2 = new trainHandler(tsi, 2, speed2);
-
+    
+    Semaphore[] sems = new Semaphore[9];
 
   }
 
   private class trainHandler {
     private static final int MAXSPEED = 30;
-    
+
     private final TSimInterface tsi;
     private final int id;
   
