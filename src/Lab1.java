@@ -16,6 +16,7 @@ public class Lab1 {
 
   private class trainHandler {
     private static final int MAXSPEED = 30;
+    
     private final TSimInterface tsi;
     private final int id;
   
