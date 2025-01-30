@@ -18,11 +18,11 @@ public class Lab1 {
     t2.start();
     
     Semaphore[] sems = new Semaphore[9];
-    //sempahore 0:
-    //sempahore 1:
-    //sempahore 2:
-    //sempahore 3:
-    //sempahore 4:
+    //sempahore 0: upperTopStation
+    //sempahore 1: upperBotStation
+    //sempahore 2: belowTopStation
+    //sempahore 3: belowBotStation
+    //sempahore 4: 
     //sempahore 5:
     //sempahore 6:
     //sempahore 7:
@@ -37,7 +37,7 @@ public class Lab1 {
     private final int id;
     private int speed;
 
-    private boolean criticalSection;
+    private boolean criticalSection, upperStation, belowStation;
   
 
     trainHandler(TSimInterface tsi, int id, int initSpeed) {
@@ -46,6 +46,8 @@ public class Lab1 {
       this.speed = initSpeed;
 
       this.criticalSection=false;
+      this.upperStation=false;
+      this.belowStation=false;
 
       setSpeed(initSpeed);
     }
@@ -74,8 +76,10 @@ public class Lab1 {
     public void sensorHandler(SensorEvent sens, Semaphore sem){
       int x = sens.getXpos();
       int y = sens.getYpos();
-    }
 
-  
+    if(train1.getXpos==x && train1.getPos ==y ){
+        //TODO
+      }
+    }
   }
 }
