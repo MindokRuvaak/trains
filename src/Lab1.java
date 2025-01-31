@@ -84,14 +84,14 @@ public class Lab1 {
       try {
         while (true) {
           SensorEvent sensor = tsi.getSensor(id);
-          // sensorHandler(sensor);
+          sensorHandler(sensor);
         }
       } catch (CommandException | InterruptedException e) {
         e.printStackTrace(); // or only e.getMessage() for the error
       }
     }
 
-    public void sensorHandler(SensorEvent sens, Semaphore sem) {
+    public void sensorHandler(SensorEvent sens) {
       int x = sens.getXpos();
       int y = sens.getYpos();
 
@@ -121,6 +121,21 @@ public class Lab1 {
       }
       return nextSems;
     }
+
+    // kv map sensor pos -> switch pos
+
+// takse sensor pos
+    private void trackSwitch(int x, int y, Heading dir) {
+      /*
+       * Switch 17 7 : N-E : W-facing : Heading S => Right
+       * Switch 15 9 : E-C : W-facing : Heading N => Left
+       * Switch 4 9 : C-W : E-facing  : Heading S => Left
+       * Switch 3 11 : W-S : E-facing : Heading N => Right
+       */
+
+
+    }
+
   }
 
   private enum Section {
@@ -188,5 +203,16 @@ public class Lab1 {
     int n() {
       return this.id;
     }
+  }
+
+  private class Pos {
+    final int x;
+    final int y;
+
+    Pos(int x, int y) {
+      this.x = x;
+      this.y = y;
+    }
+
   }
 }
