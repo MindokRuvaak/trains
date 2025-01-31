@@ -58,6 +58,7 @@ public class Lab1 {
       this.sem = new Semaphore(1);
       this.sec = sec;
     }
+
   }
 
   private enum Section {
