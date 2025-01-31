@@ -7,7 +7,7 @@ public class Lab1 {
   // java -cp bin Main "Lab1.map" 5 10 20
   public Lab1(int speed1, int speed2) throws InterruptedException {
     TSimInterface tsi = TSimInterface.getInstance();
-    Semaphore[] sems = new Semaphore[9];
+    Semaphore[] sems = makeSems();
 
     TrainHandler train1 = new TrainHandler(tsi, 1, speed1, Section.North, Heading.South, sems);
     TrainHandler train2 = new TrainHandler(tsi, 2, speed2, Section.South, Heading.North, sems);
@@ -28,6 +28,14 @@ public class Lab1 {
     // sempahore 7: belowBotStation - South 2
     // sempahore 8: - crossing
 
+  }
+
+  private Semaphore[] makeSems() {
+    Semaphore[] sems = new Semaphore[9];
+    for (int i = 0; i < sems.length; i++) {
+      sems[i] = new Semaphore(1);
+    }
+    return sems;
   }
 
   class TrainHandler implements Runnable {
@@ -93,19 +101,19 @@ public class Lab1 {
       Semaphore[] nextSems;
       switch (nextSec) {
         case Section.North:
-          nextSems = new Semaphore[]{ sems[0], sems[1] };
+          nextSems = new Semaphore[] { sems[0], sems[1] };
           break;
         case Section.East:
-        nextSems = new Semaphore[]{ sems[2] };
+          nextSems = new Semaphore[] { sems[2] };
           break;
         case Section.Center:
-        nextSems = new Semaphore[]{ sems[3], sems[4] };
+          nextSems = new Semaphore[] { sems[3], sems[4] };
           break;
         case Section.West:
-        nextSems = new Semaphore[]{ sems[5] };
+          nextSems = new Semaphore[] { sems[5] };
           break;
         case Section.South:
-        nextSems = new Semaphore[]{ sems[6], sems[7] };
+          nextSems = new Semaphore[] { sems[6], sems[7] };
           break;
         default:
           nextSems = null;
