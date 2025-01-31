@@ -108,7 +108,7 @@ public class Lab1 {
     South(4)/* , South2(4) */;
 
     private final int id;
-    private final int[][] next = { { 1, 1 },
+    private final int[][] next = { { 1, 1 }, //position / section , direction
         { 0, 2 },
         { 1, 3 },
         { 2, 4 },
