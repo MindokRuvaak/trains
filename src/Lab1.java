@@ -8,8 +8,8 @@ public class Lab1 {
   public Lab1(int speed1, int speed2) throws InterruptedException  {
     TSimInterface tsi = TSimInterface.getInstance();
 
-    trainHandler train1 = new trainHandler(tsi, 1, speed1, Section.North, Heading.South);
-    trainHandler train2 = new trainHandler(tsi, 2, speed2, Section.South, Heading.North);
+    TrainHandler train1 = new TrainHandler(tsi, 1, speed1, Section.North, Heading.South);
+    TrainHandler train2 = new TrainHandler(tsi, 2, speed2, Section.South, Heading.North);
 
     Thread t1 =new Thread(train1);
     Thread t2 =new Thread(train2);
@@ -30,7 +30,7 @@ public class Lab1 {
 
   }
 
-  class trainHandler implements Runnable{
+  class TrainHandler implements Runnable{
     private static final int MAXSPEED = 30;
 
     private final TSimInterface tsi;
@@ -42,7 +42,7 @@ public class Lab1 {
     private Section currentTrack;
     private Heading dir;
 
-    trainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir) {
+    TrainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir) {
       this.tsi = tsi;
       this.id = id;
       this.speed = initSpeed;
