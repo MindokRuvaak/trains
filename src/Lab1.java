@@ -4,6 +4,7 @@ import java.lang.Math;
 
 public class Lab1 {
 
+// java -cp bin Main "Lab1.map" 5 10 20
   public Lab1(int speed1, int speed2) throws InterruptedException  {
     TSimInterface tsi = TSimInterface.getInstance();
 
@@ -17,10 +18,10 @@ public class Lab1 {
     t2.start();
     
     Semaphore[] sems = new Semaphore[9];
-    //sempahore 0: upperTopStation
-    //sempahore 1: upperBotStation
-    //sempahore 2: belowTopStation
-    //sempahore 3: belowBotStation
+    //sempahore 0: upperTopStation - North 1
+    //sempahore 1: upperBotStation - North 2
+    //sempahore 2: belowTopStation - South 1
+    //sempahore 3: belowBotStation - South 2
     //sempahore 4: 
     //sempahore 5:
     //sempahore 6:
@@ -88,16 +89,16 @@ public class Lab1 {
     }
   }
 
-  private class TrackSec {
-    private final Semaphore sem;
-    private final Section sec;
+  // private class TrackSec {
+  //   private final Semaphore sem;
+  //   private final Section sec;
 
-    TrackSec(Section sec) {
-      this.sem = new Semaphore(1);
-      this.sec = sec;
-    }
+  //   TrackSec(Section sec) {
+  //     this.sem = new Semaphore(1);
+  //     this.sec = sec;
+  //   }
 
-  }
+  // }
 
   private enum Section {
     North(0), /* North2(0), */
