@@ -7,8 +7,8 @@ public class Lab1 {
   public Lab1(int speed1, int speed2) throws InterruptedException  {
     TSimInterface tsi = TSimInterface.getInstance();
 
-    trainHandler train1 = new trainHandler(tsi, 1, speed1);
-    trainHandler train2 = new trainHandler(tsi, 2, speed2);
+    trainHandler train1 = new trainHandler(tsi, 1, speed1, Section.North, Heading.South);
+    trainHandler train2 = new trainHandler(tsi, 2, speed2, Section.South, Heading.North);
 
     Thread t1 =new Thread(train1);
     Thread t2 =new Thread(train2);
@@ -41,7 +41,7 @@ public class Lab1 {
     private Section currentTrack;
     private Heading dir;
 
-    TrainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir) {
+    trainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir) {
       this.tsi = tsi;
       this.id = id;
       this.speed = initSpeed;
@@ -67,6 +67,7 @@ public class Lab1 {
 
     @Override
     public void run() {
+      setSpeed(this.currentSpeed);
       try {
         while (true) {
           SensorEvent sensor = tsi.getSensor(id);
@@ -81,14 +82,9 @@ public class Lab1 {
       int x = sens.getXpos();
       int y = sens.getYpos();
 
-    if(train1.getXpos==x && train1.getPos ==y ){
-        //TODO
-      }
-    }
-
-    @Override
-    public void run() {
-      setSpeed(this.currentSpeed);
+      // if(train1.getXpos==x && train1.getPos ==y ){
+      //      //TODO
+      // }
     }
   }
 
