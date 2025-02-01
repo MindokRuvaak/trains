@@ -1,4 +1,7 @@
 import TSim.*;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.lang.Math;
 
@@ -51,6 +54,7 @@ public class Lab1 {
     private Heading dir;
 
     private final Semaphore[] sems;
+    private final Map<Pos, Pos> switchLookUp; // map for getting position of switch associated with
 
     TrainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir, Semaphore[] sems) {
       this.tsi = tsi;
@@ -66,10 +70,29 @@ public class Lab1 {
       this.dir = dir;
 
       this.sems = sems;
+      this.switchLookUp = genMap();
     }
 
+    // generates a lookup table /kv map for finding switches given sensor position
+    private Map<Pos, Pos> genMap() {
+      Map<Pos, Pos> lookup = new HashMap<>();
+      Pos[] switches = { new Pos(17, 7), new Pos(15, 9), new Pos(4,9), new Pos(3, 11) };
+      Pos[] sensors = {
+          new Pos(14, 7), new Pos(15, 8), new Pos(19, 8),   // switches[0]
+          new Pos(17, 9), new Pos(12, 9), new Pos(13, 10),  // switches[1]
+          new Pos(7,9),   new Pos(6,10),  new Pos(2,9),     // Switches[2]
+          new Pos(4, 13), new Pos(6, 11), new Pos(1, 10) }; // switches[3]
+      for (int i = 0; i < switches.length; i++) {
+        lookup.put(sensors[3 * i + 0], switches[i]);
+        lookup.put(sensors[3 * i + 1], switches[i]);
+        lookup.put(sensors[3 * i + 2], switches[i]);
+      }
+      return lookup;
+    }
+
+    // sets speed, if given outside of bounds, it's set to max allowed
     void setSpeed(int speed) {
-      currentSpeed = Math.clamp(speed, -MAXSPEED, MAXSPEED);
+      currentSpeed = Math.clamp(speed, -MAXSPEED, MAXSPEED); // not allowed to provide negative speed?
       try {
         this.tsi.setSpeed(this.id, this.currentSpeed);
       } catch (CommandException e) {
@@ -122,17 +145,14 @@ public class Lab1 {
       return nextSems;
     }
 
-    // kv map sensor pos -> switch pos
-
-// takse sensor pos
-    private void trackSwitch(int x, int y, Heading dir) {
+    // takes sensor pos and heading, ensures train can pass associated switch
+    private void trackSwitch(Pos sensor, Heading dir) {
       /*
        * Switch 17 7 : N-E : W-facing : Heading S => Right
        * Switch 15 9 : E-C : W-facing : Heading N => Left
-       * Switch 4 9 : C-W : E-facing  : Heading S => Left
+       * Switch 4 9 : C-W : E-facing : Heading S => Left
        * Switch 3 11 : W-S : E-facing : Heading N => Right
        */
-
 
     }
 
@@ -212,6 +232,38 @@ public class Lab1 {
     Pos(int x, int y) {
       this.x = x;
       this.y = y;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + getEnclosingInstance().hashCode();
+      result = prime * result + x;
+      result = prime * result + y;
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj)
+        return true;
+      if (obj == null)
+        return false;
+      if (getClass() != obj.getClass())
+        return false;
+      Pos other = (Pos) obj;
+      if (!getEnclosingInstance().equals(other.getEnclosingInstance()))
+        return false;
+      if (x != other.x)
+        return false;
+      if (y != other.y)
+        return false;
+      return true;
+    }
+
+    private Lab1 getEnclosingInstance() {
+      return Lab1.this;
     }
 
   }
