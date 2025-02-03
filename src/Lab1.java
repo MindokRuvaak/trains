@@ -6,6 +6,8 @@ import java.util.concurrent.Semaphore;
 import java.lang.Math;
 
 public class Lab1 {
+  public static final int SWITCH_LEFT = 0x01;
+  public static final int SWITCH_RIGHT = 0x02;
 
   // java -cp bin Main "Lab1.map" 5 10 20
   public Lab1(int speed1, int speed2) throws InterruptedException {
@@ -54,7 +56,15 @@ public class Lab1 {
     private Heading dir;
 
     private final Semaphore[] sems;
+
+    private final Pos[] switches = { new Pos(17, 7), new Pos(15, 9), new Pos(4, 9), new Pos(3, 11) };
+    private final Pos[] sensors = {
+        new Pos(14, 7), new Pos(15, 8), new Pos(19, 8), // switches[0]
+        new Pos(17, 9), new Pos(12, 9), new Pos(13, 10), // switches[1]
+        new Pos(7, 9), new Pos(6, 10), new Pos(2, 9), // Switches[2]
+        new Pos(4, 13), new Pos(6, 11), new Pos(1, 10) }; // switches[3]
     private final Map<Pos, Pos> switchLookUp; // map for getting position of switch associated with
+    private final Map<Pos, SwitchFacing> switchFacing;
 
     TrainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir, Semaphore[] sems) {
       this.tsi = tsi;
@@ -70,23 +80,37 @@ public class Lab1 {
       this.dir = dir;
 
       this.sems = sems;
-      this.switchLookUp = genMap();
+      this.switchLookUp = genSwitchMap();
+      this.switchFacing = genFacingMap();
     }
 
     // generates a lookup table /kv map for finding switches given sensor position
-    private Map<Pos, Pos> genMap() {
+    private Map<Pos, Pos> genSwitchMap() {
       Map<Pos, Pos> lookup = new HashMap<>();
-      Pos[] switches = { new Pos(17, 7), new Pos(15, 9), new Pos(4,9), new Pos(3, 11) };
-      Pos[] sensors = {
-          new Pos(14, 7), new Pos(15, 8), new Pos(19, 8),   // switches[0]
-          new Pos(17, 9), new Pos(12, 9), new Pos(13, 10),  // switches[1]
-          new Pos(7,9),   new Pos(6,10),  new Pos(2,9),     // Switches[2]
-          new Pos(4, 13), new Pos(6, 11), new Pos(1, 10) }; // switches[3]
+
       for (int i = 0; i < switches.length; i++) {
         lookup.put(sensors[3 * i + 0], switches[i]);
         lookup.put(sensors[3 * i + 1], switches[i]);
         lookup.put(sensors[3 * i + 2], switches[i]);
       }
+      return lookup;
+    }
+
+    // generates a kv map for getting the ''facing'' of each switch, facing,
+    // combined
+    // with train heading, can be used to get what direction switch should be set to
+    private Map<Pos, SwitchFacing> genFacingMap() {
+      Map<Pos, SwitchFacing> lookup = new HashMap<>();
+      /*
+       * [0] Switch 17 7 : N-E : W-facing : Heading S => Right
+       * [1] Switch 15 9 : E-C : W-facing : Heading N => Left
+       * [2] Switch 4 9 : C-W : E-facing : Heading S => Left
+       * [3] Switch 3 11 : W-S : E-facing : Heading N => Right
+       */
+      lookup.put(switches[0], SwitchFacing.West);
+      lookup.put(switches[1], SwitchFacing.West);
+      lookup.put(switches[2], SwitchFacing.East);
+      lookup.put(switches[3], SwitchFacing.East);
       return lookup;
     }
 
@@ -120,7 +144,7 @@ public class Lab1 {
 
     }
 
-    private Semaphore[] nextSem(Section nextSec) {
+    private Semaphore[] nextSecSems(Section nextSec) {
       Semaphore[] nextSems;
       switch (nextSec) {
         case Section.North:
@@ -153,7 +177,26 @@ public class Lab1 {
        * Switch 4 9 : C-W : E-facing : Heading S => Left
        * Switch 3 11 : W-S : E-facing : Heading N => Right
        */
+      Pos sPos = switchLookUp.get(sensor);
+      try {
+        tsi.setSwitch(sPos.x, sPos.y, switchDir(switchFacing.get(sPos), dir));
+      } catch (CommandException e) {
+        e.printStackTrace();
+      }
+    }
 
+    private int switchDir(SwitchFacing facing, Heading dir) {
+      int sDir = -1;
+      if (facing == SwitchFacing.West && dir == Heading.North) {
+        sDir = SWITCH_LEFT;
+      } else if (facing == SwitchFacing.West && dir == Heading.South) {
+        sDir = SWITCH_RIGHT;
+      } else if (facing == SwitchFacing.East && dir == Heading.North) {
+        sDir = SWITCH_RIGHT;
+      } else if (facing == SwitchFacing.East && dir == Heading.South) {
+        sDir = SWITCH_LEFT;
+      }
+      return sDir;
     }
 
   }
@@ -267,4 +310,9 @@ public class Lab1 {
     }
 
   }
+
+  private enum SwitchFacing {
+    East, West;
+  }
+
 }
