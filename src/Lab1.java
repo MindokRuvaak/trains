@@ -9,6 +9,8 @@ public class Lab1 {
   public static final int SWITCH_LEFT = 0x01;
   public static final int SWITCH_RIGHT = 0x02;
 
+  // make all; java -cp bin Main "Lab1.map" 5 10 20
+
   // java -cp bin Main "Lab1.map" 5 10 20
   public Lab1(int speed1, int speed2) throws InterruptedException {
     TSimInterface tsi = TSimInterface.getInstance();
@@ -23,14 +25,14 @@ public class Lab1 {
     t1.start();
     t2.start();
 
-    // sempahore 0: upperTopStation - North 1
-    // sempahore 1: upperBotStation - North 2
+    // sempahore 0: - North 1
+    // sempahore 1: - North 2
     // sempahore 2: - East
     // sempahore 3: - Center 1
     // sempahore 4: - Center 2
     // sempahore 5: - West
-    // sempahore 6: belowTopStation - South 1
-    // sempahore 7: belowBotStation - South 2
+    // sempahore 6: - South 1
+    // sempahore 7: - South 2
     // sempahore 8: - crossing
 
   }
@@ -44,44 +46,69 @@ public class Lab1 {
   }
 
   class TrainHandler implements Runnable {
-    private static final int MAXSPEED = 30;
+    private static final int MAXSPEED = 22; // from testing this is max, unless we move sensors
 
     private final TSimInterface tsi;
     private final int id;
-    private int speed;
+    // private int speed;
 
     private boolean criticalSection, upperStation, belowStation;
     private int currentSpeed;
-    private Section currentTrack;
-    private Heading dir;
+    private Section currentSec;
+    private Heading currentDir;
 
     private final Semaphore[] sems;
 
+    // provide these in constructor?
     private final Pos[] switches = { new Pos(17, 7), new Pos(15, 9), new Pos(4, 9), new Pos(3, 11) };
-    private final Pos[] sensors = {
+    private final Pos[] switchSensors = {
         new Pos(14, 7), new Pos(15, 8), new Pos(19, 8), // switches[0]
         new Pos(17, 9), new Pos(12, 9), new Pos(13, 10), // switches[1]
         new Pos(7, 9), new Pos(6, 10), new Pos(2, 9), // Switches[2]
-        new Pos(4, 13), new Pos(6, 11), new Pos(1, 10) }; // switches[3]
+        new Pos(1, 10), new Pos(4, 13), new Pos(6, 11) }; // switches[3]
+    private final Pos[] crossingSensors = { // sensors at crossing
+        new Pos(6, 6), new Pos(9, 5), new Pos(11, 7), new Pos(11, 8) };
+    private final Pos[] stationSensors = {
+        new Pos(14, 3), new Pos(14, 5), new Pos(14, 11), new Pos(14, 13) };
     private final Map<Pos, Pos> switchLookUp; // map for getting position of switch associated with
     private final Map<Pos, SwitchFacing> switchFacing;
 
-    TrainHandler(TSimInterface tsi, int id, int initSpeed, Section startSec, Heading dir, Semaphore[] sems) {
+    private final int[][] nsSensorsInd = {  
+      { 2, 4, 5, 8, 10, 11 },
+      { 0, 1, 3, 6, 7, 9 } };
+
+    private Semaphore currentSem;
+    private Semaphore semToRelease;
+    private boolean onSideTrack;
+
+    TrainHandler(TSimInterface tsi, int id, int initSpeed, Section initSec, Heading initDir, Semaphore[] sems) {
       this.tsi = tsi;
       this.id = id;
-      this.speed = initSpeed;
+      // this.speed = initSpeed;
 
       this.criticalSection = false;
       this.upperStation = false;
       this.belowStation = false;
 
       this.currentSpeed = initSpeed;
-      this.currentTrack = startSec;
-      this.dir = dir;
+      this.currentSec = initSec;
+      this.currentDir = initDir;
 
       this.sems = sems;
       this.switchLookUp = genSwitchMap();
       this.switchFacing = genFacingMap();
+
+      this.onSideTrack = false;
+
+      // if start at north, aquire semaphore [0] else semaphore [6]
+      int s = this.currentSec == Section.North ? 0 : 6;
+      try {
+        this.currentSem = sems[s];
+        this.currentSem.acquire();
+        // System.out.println("train: " + id + " taking sem " + s);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
 
     // generates a lookup table /kv map for finding switches given sensor position
@@ -89,23 +116,23 @@ public class Lab1 {
       Map<Pos, Pos> lookup = new HashMap<>();
 
       for (int i = 0; i < switches.length; i++) {
-        lookup.put(sensors[3 * i + 0], switches[i]);
-        lookup.put(sensors[3 * i + 1], switches[i]);
-        lookup.put(sensors[3 * i + 2], switches[i]);
+        lookup.put(switchSensors[3 * i + 0], switches[i]);
+        lookup.put(switchSensors[3 * i + 1], switches[i]);
+        lookup.put(switchSensors[3 * i + 2], switches[i]);
       }
       return lookup;
     }
 
     // generates a kv map for getting the ''facing'' of each switch, facing,
-    // combined
-    // with train heading, can be used to get what direction switch should be set to
+    // combined with train heading, can be used to get what direction switch
+    // should be set to
     private Map<Pos, SwitchFacing> genFacingMap() {
       Map<Pos, SwitchFacing> lookup = new HashMap<>();
       /*
-       * [0] Switch 17 7 : N-E : W-facing : Heading S => Right
-       * [1] Switch 15 9 : E-C : W-facing : Heading N => Left
-       * [2] Switch 4 9 : C-W : E-facing : Heading S => Left
-       * [3] Switch 3 11 : W-S : E-facing : Heading N => Right
+       * [0] Switch 17 7 : N-E : W-facing
+       * [1] Switch 15 9 : E-C : W-facing
+       * [2] Switch 4 9 : C-W : E-facing
+       * [3] Switch 3 11 : W-S : E-facing
        */
       lookup.put(switches[0], SwitchFacing.West);
       lookup.put(switches[1], SwitchFacing.West);
@@ -116,7 +143,7 @@ public class Lab1 {
 
     // sets speed, if given outside of bounds, it's set to max allowed
     void setSpeed(int speed) {
-      currentSpeed = Math.clamp(speed, -MAXSPEED, MAXSPEED); // not allowed to provide negative speed?
+      this.currentSpeed = Math.clamp(speed, -MAXSPEED, MAXSPEED); // not allowed to provide negative speed?
       try {
         this.tsi.setSpeed(this.id, this.currentSpeed);
       } catch (CommandException e) {
@@ -127,6 +154,7 @@ public class Lab1 {
 
     @Override
     public void run() {
+
       setSpeed(this.currentSpeed);
       try {
         while (true) {
@@ -134,17 +162,67 @@ public class Lab1 {
           sensorHandler(sensor);
         }
       } catch (CommandException | InterruptedException e) {
-        e.printStackTrace(); // or only e.getMessage() for the error
+        e.printStackTrace();
       }
     }
 
     public void sensorHandler(SensorEvent sens) {
       int x = sens.getXpos();
       int y = sens.getYpos();
+      Pos sensor = new Pos(x, y);
+      if (sens.getStatus() == SensorEvent.ACTIVE) {// only hande sensors upon activation? maybe change later
 
+        // check if heading into crossing
+        if (this.currentSec == Section.North && sensor.in(crossingSensors)) {
+          handleCrossing();
+        } else // update switch upon activating sensor
+        if (sensor.in(switchSensors) && headingIntoSwitch(sensor)) {
+          semAndSwitch(sensor);
+          // System.out.println("switching track");
+        } else // at station
+        if (arrivingAtStation() && sensor.in(stationSensors)) {
+          stopAtStation();
+        } else // passing a sensor but leaving the track switch
+        if (sensor.in(switchSensors) && !headingIntoSwitch(sensor)) {
+          semToRelease.release();
+        }
+      } /* else {
+       
+      } */
     }
 
-    private Semaphore[] nextSecSems(Section nextSec) {
+    private boolean headingIntoSwitch(Pos sens) {
+      boolean res = false;
+      int j = this.currentDir == Heading.North ? 0 : 1;
+      for (int i : nsSensorsInd[j]) {
+        // System.out.println(switchSensors[i]);
+        if (switchSensors[i].equals(sens)) {
+          res = true;
+        }
+      }
+      // System.out.println(sens +":"+res+":"+id);
+      return res;
+    }
+
+    private boolean arrivingAtStation() {
+      return (this.currentSec == Section.North && this.currentDir == Heading.North)
+          || (this.currentSec == Section.South && this.currentDir == Heading.South);
+    }
+
+    private void stopAtStation() {
+      int speed = currentSpeed;
+      setSpeed(0);
+      try {
+        Thread.sleep(1000 + (20 * Math.abs(speed)));
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      this.currentDir = this.currentDir.reverse();
+
+      setSpeed(-1 * speed);
+    }
+
+    private Semaphore[] secSems(Section nextSec) {
       Semaphore[] nextSems;
       switch (nextSec) {
         case Section.North:
@@ -170,33 +248,82 @@ public class Lab1 {
     }
 
     // takes sensor pos and heading, ensures train can pass associated switch
-    private void trackSwitch(Pos sensor, Heading dir) {
-      /*
-       * Switch 17 7 : N-E : W-facing : Heading S => Right
-       * Switch 15 9 : E-C : W-facing : Heading N => Left
-       * Switch 4 9 : C-W : E-facing : Heading S => Left
-       * Switch 3 11 : W-S : E-facing : Heading N => Right
-       */
+    // if track is avaliable
+    private void semAndSwitch(Pos sensor) {
+
+      boolean exitAlt = onSideTrack;
+
+      Section nextSec = this.currentSec.next(this.currentDir);
+      Semaphore[] nextSems = secSems(nextSec);
+
+      boolean aquired = false;
+      boolean enterAlt = false;
+      // System.out.println("---" + id + "---");
+      for (int i = 0; !aquired && i < nextSems.length; i++) {
+        // System.out.println((i + 1) + "/" + nextSems.length + ":" + nextSems[i].availablePermits());
+        aquired = nextSems[i].tryAcquire();
+        // System.out.println(aquired);
+        if (aquired) {
+          this.semToRelease = this.currentSem;
+          this.currentSem = nextSems[i];
+          enterAlt = i != 0;
+        }
+      }
+      
+      onSideTrack = enterAlt;
+      // System.out.println("---");
+      // System.out.println((enterAlt || exitAlt) + " : " + id);
+
       Pos sPos = switchLookUp.get(sensor);
+      if (!aquired) {
+        stopAndWait(nextSems[0]);// thread sleeps untill train can enter section
+        // should only happen on single line tracks
+      }
+      switchTrack(sPos, exitAlt || enterAlt, nextSec);
+    }
+
+    private void switchTrack(Pos sens, boolean alt, Section nextSec) {
       try {
-        tsi.setSwitch(sPos.x, sPos.y, switchDir(switchFacing.get(sPos), dir));
+        tsi.setSwitch(sens.x, sens.y, switchDir(switchFacing.get(sens), alt));
       } catch (CommandException e) {
+        e.printStackTrace();
+      }
+      // is now entering next section
+      this.currentSec = nextSec;
+    }
+
+    private void stopAndWait(Semaphore sem) {
+      int speed = currentSpeed;
+      setSpeed(0);
+      try {
+        sem.acquire();
+        this.semToRelease = this.currentSem;
+        this.currentSem = sem;
+        setSpeed(speed);
+      } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
 
-    private int switchDir(SwitchFacing facing, Heading dir) {
-      int sDir = -1;
-      if (facing == SwitchFacing.West && dir == Heading.North) {
-        sDir = SWITCH_LEFT;
-      } else if (facing == SwitchFacing.West && dir == Heading.South) {
-        sDir = SWITCH_RIGHT;
-      } else if (facing == SwitchFacing.East && dir == Heading.North) {
-        sDir = SWITCH_RIGHT;
-      } else if (facing == SwitchFacing.East && dir == Heading.South) {
-        sDir = SWITCH_LEFT;
+    // alt = true if train should enter or exits secondary track
+    private int switchDir(SwitchFacing facing, boolean alt) {
+      boolean switchLeft = true;
+      if (facing == SwitchFacing.West && this.currentDir == Heading.North) {
+        switchLeft = alt;
+      } else if (facing == SwitchFacing.West && this.currentDir == Heading.South) {
+        switchLeft = alt;
+      } else if (facing == SwitchFacing.East && this.currentDir == Heading.North) {
+        switchLeft = !alt;
+      } else if (facing == SwitchFacing.East && this.currentDir == Heading.South) {
+        switchLeft = !alt;
       }
-      return sDir;
+      return switchLeft ? SWITCH_LEFT : SWITCH_RIGHT;
+    }
+
+    private void handleCrossing() {
+      // TODO: this
+      // throw new UnsupportedOperationException("Unimplemented method
+      // 'handleCrossing'");
     }
 
   }
@@ -266,6 +393,10 @@ public class Lab1 {
     int n() {
       return this.id;
     }
+
+    Heading reverse() {
+      return this == Heading.North ? Heading.South : Heading.North;
+    }
   }
 
   private class Pos {
@@ -309,10 +440,29 @@ public class Lab1 {
       return Lab1.this;
     }
 
+    public boolean in(Pos[] arr) {
+      boolean res = false;
+      for (Pos pos : arr) {
+        if (pos.equals(this)) {
+          res = true;
+        }
+      }
+      return res;
+    }
+
+    @Override
+    public String toString() {
+      return "(" + x + "," + y + ")";
+    }
+
   }
 
   private enum SwitchFacing {
     East, West;
+  }
+
+  private enum SubSection {
+    North1, North2, Center1, Center2, South1, South2
   }
 
 }
