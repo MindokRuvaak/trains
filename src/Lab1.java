@@ -34,7 +34,6 @@ public class Lab1 {
     // sempahore 6: - South 1
     // sempahore 7: - South 2
     // sempahore 8: - crossing
-
   }
 
   private Semaphore[] makeSems() {
@@ -50,9 +49,8 @@ public class Lab1 {
 
     private final TSimInterface tsi;
     private final int id;
-    // private int speed;
 
-    private boolean criticalSection, upperStation, belowStation;
+    // private boolean criticalSection, upperStation, belowStation;
     private int currentSpeed;
     private Section currentSec;
     private Heading currentDir;
@@ -73,9 +71,9 @@ public class Lab1 {
     private final Map<Pos, Pos> switchLookUp; // map for getting position of switch associated with
     private final Map<Pos, SwitchFacing> switchFacing;
 
-    private final int[][] nsSensorsInd = {  
-      { 2, 4, 5, 8, 10, 11 },
-      { 0, 1, 3, 6, 7, 9 } };
+    private final int[][] nsSensorsInd = {
+        { 2, 4, 5, 8, 10, 11 },
+        { 0, 1, 3, 6, 7, 9 } };
 
     private Semaphore currentSem;
     private Semaphore semToRelease;
@@ -84,11 +82,6 @@ public class Lab1 {
     TrainHandler(TSimInterface tsi, int id, int initSpeed, Section initSec, Heading initDir, Semaphore[] sems) {
       this.tsi = tsi;
       this.id = id;
-      // this.speed = initSpeed;
-
-      this.criticalSection = false;
-      this.upperStation = false;
-      this.belowStation = false;
 
       this.currentSpeed = initSpeed;
       this.currentSec = initSec;
@@ -100,12 +93,10 @@ public class Lab1 {
 
       this.onSideTrack = false;
 
-      // if start at north, aquire semaphore [0] else semaphore [6]
       int s = this.currentSec == Section.North ? 0 : 6;
       try {
         this.currentSem = sems[s];
         this.currentSem.acquire();
-        // System.out.println("train: " + id + " taking sem " + s);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -173,12 +164,11 @@ public class Lab1 {
       if (sens.getStatus() == SensorEvent.ACTIVE) {// only hande sensors upon activation? maybe change later
 
         // check if heading into crossing
-        if (this.currentSec == Section.North && sensor.in(crossingSensors)) {
-          handleCrossing();
+        if (sensor.in(crossingSensors)) {
+          handleCrossing(sensor);
         } else // update switch upon activating sensor
         if (sensor.in(switchSensors) && headingIntoSwitch(sensor)) {
           semAndSwitch(sensor);
-          // System.out.println("switching track");
         } else // at station
         if (arrivingAtStation() && sensor.in(stationSensors)) {
           stopAtStation();
@@ -186,21 +176,17 @@ public class Lab1 {
         if (sensor.in(switchSensors) && !headingIntoSwitch(sensor)) {
           semToRelease.release();
         }
-      } /* else {
-       
-      } */
+      }
     }
 
     private boolean headingIntoSwitch(Pos sens) {
       boolean res = false;
       int j = this.currentDir == Heading.North ? 0 : 1;
       for (int i : nsSensorsInd[j]) {
-        // System.out.println(switchSensors[i]);
         if (switchSensors[i].equals(sens)) {
           res = true;
         }
       }
-      // System.out.println(sens +":"+res+":"+id);
       return res;
     }
 
@@ -258,21 +244,16 @@ public class Lab1 {
 
       boolean aquired = false;
       boolean enterAlt = false;
-      // System.out.println("---" + id + "---");
       for (int i = 0; !aquired && i < nextSems.length; i++) {
-        // System.out.println((i + 1) + "/" + nextSems.length + ":" + nextSems[i].availablePermits());
         aquired = nextSems[i].tryAcquire();
-        // System.out.println(aquired);
         if (aquired) {
           this.semToRelease = this.currentSem;
           this.currentSem = nextSems[i];
           enterAlt = i != 0;
         }
       }
-      
+
       onSideTrack = enterAlt;
-      // System.out.println("---");
-      // System.out.println((enterAlt || exitAlt) + " : " + id);
 
       Pos sPos = switchLookUp.get(sensor);
       if (!aquired) {
@@ -320,20 +301,51 @@ public class Lab1 {
       return switchLeft ? SWITCH_LEFT : SWITCH_RIGHT;
     }
 
-    private void handleCrossing() {
-      // TODO: this
-      // throw new UnsupportedOperationException("Unimplemented method
-      // 'handleCrossing'");
+    private void handleCrossing(Pos sensor) {
+      if (headingIntoCrossing(sensor)) {
+        tryEnterCrossing();
+      } else {
+        sems[8].release();
+      }
+    }
+
+    private void tryEnterCrossing() {
+      if (!sems[8].tryAcquire()) {
+        int speed = currentSpeed;
+        setSpeed(0);
+        try {
+          sems[8].acquire();
+          setSpeed(speed);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+
+    private boolean headingIntoCrossing(Pos sensor) {
+      boolean res;
+      switch (this.currentDir) {
+        case Heading.South:
+          res = sensor.in(new Pos[] { crossingSensors[0], crossingSensors[1] });
+          break;
+        case Heading.North:
+          res = sensor.in(new Pos[] { crossingSensors[2], crossingSensors[3] });
+          break;
+        default:
+          res = false;
+          break;
+      }
+      return res;
     }
 
   }
 
   private enum Section {
-    North(0), /* North2(0), */
+    North(0), 
     East(1),
-    Center(2), /* Center2(2), */
+    Center(2), 
     West(3),
-    South(4)/* , South2(4) */;
+    South(4);
 
     private final int id;
     private final int[][] next = { { 1, 1 }, // position / section , direction
@@ -459,10 +471,6 @@ public class Lab1 {
 
   private enum SwitchFacing {
     East, West;
-  }
-
-  private enum SubSection {
-    North1, North2, Center1, Center2, South1, South2
   }
 
 }
